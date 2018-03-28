@@ -10,5 +10,5 @@ rel/example_project
 .rebar
 data/
 .erlang.mk/
-emq_mod_subscription.d
-etc/.emq_mod_subscription.conf.swp
+emq_mod_persistence.d
+etc/.emq_mod_persistence.conf.swp

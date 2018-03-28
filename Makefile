@@ -1,5 +1,5 @@
-PROJECT = emq_mod_subscription
-PROJECT_DESCRIPTION = Subscription Management Module
+PROJECT = emq_mod_persistence
+PROJECT_DESCRIPTION = Subscription Persistence Module
 PROJECT_VERSION = 2.0.7
 
 BUILD_DEPS = emqttd cuttlefish
@@ -11,4 +11,4 @@ ERLC_OPTS += +'{parse_transform, lager_transform}'
 include erlang.mk
 
 app.config::
-	./deps/cuttlefish/cuttlefish -l info -e etc/ -c etc/emq_mod_subscription.conf -i priv/emq_mod_subscription.schema -d data
+	./deps/cuttlefish/cuttlefish -l info -e etc/ -c etc/emq_mod_persistence.conf -i priv/emq_mod_persistence.schema -d data

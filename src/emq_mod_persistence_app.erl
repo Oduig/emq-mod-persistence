@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_mod_subscription_app).
+-module(emq_mod_persistence_app).
 
 -include_lib("emqttd/include/emqttd_protocol.hrl").
 
@@ -26,7 +26,7 @@
 
 -export([init/1]).
 
--define(APP, emq_mod_subscription).
+-define(APP, emq_mod_persistence).
 
 start(_Type, _Args) ->
     ?APP:load(application:get_env(?APP, topics, [])),
