@@ -1,0 +1,13 @@
+{application, emq_mod_persistence,
+  [
+    {description, "emq_mod_persistence"},
+    {vsn, "1.1.2"},
+    {registered, []},
+    {applications, [
+                    kernel,
+                    stdlib
+                   ]},
+    {mod, { emq_mod_persistence, []}},
+    {env, []}
+  ]
+}.

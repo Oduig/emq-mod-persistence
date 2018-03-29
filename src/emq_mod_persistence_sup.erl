@@ -13,21 +13,26 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%--------------------------------------------------------------------
--module(emq_mod_persistence_app).
+-module(emq_mod_persistence_sup).
 
--behaviour(application).
+-behaviour(supervisor).
 
-%% Application callbacks
--export([start/2, stop/1]).
+%% API
+-export([start_link/0]).
+
+%% Supervisor callbacks
+-export([init/1]).
 
 %% ===================================================================
-%% Application callbacks
+%% API functions
 %% ===================================================================
 
-start(_StartType, _StartArgs) ->
-  {ok, Sup} = emq_mod_persistence_sup:start_link(),
-  emq_mod_persistence:load(application:get_all_env()),
-  {ok, Sup}.
+start_link() ->
+  supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-stop(_State) ->
-  emq_mod_persistence:unload().
+%% ===================================================================
+%% Supervisor callbacks
+%% ===================================================================
+
+init([]) ->
+  {ok, { {one_for_one, 5, 10}, []} }.
