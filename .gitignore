@@ -12,3 +12,4 @@ data/
 .erlang.mk/
 emq_mod_persistence.d
 etc/.emq_mod_persistence.conf.swp
+.idea
