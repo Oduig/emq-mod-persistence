@@ -1,30 +1,25 @@
-emq_mod_subscription
+emq_mod_persistence
 ====================
 
-Subscription Management Module
+Persistence Management Module automatically persists subscriptions from clients connecting with the flag `clean=false`.
+ All messages that were sent to the topic for a persisted subscription are stored while the client is away. Upon reconnect, 
+ the client is automatically subscribed and receives the missed messages.
+ 
+This plugin allows restarting the broker without losing messages. 
+Note that `QoS level 1` has to be active for both the subscription as well as all sent messages.
 
-Configure Subscription Module
+Configure Persistence Module
 -----------------------------
 
-etc/plugins/emq_mod_subscription.conf
+etc/plugins/emq_mod_persistence.conf
 
-```
-## Subscribe the Topics automatically when a client connected
-module.subscription.1.topic = $client/%c
-## Qos of the subscription: 0 | 1 | 2
-module.subscription.1.qos = 1
-
-##module.subscription.2.topic = $user/%u
-##module.subscription.2.qos = 1
-```
-
-Load Subscription Module
+Load Persistence Module
 ------------------------
 
 Note: This module will be loaded by default.
 
 ```
-./bin/emqttd_ctl plugins load emq_mod_subscription
+./bin/emqttd_ctl plugins load emq_mod_persistence
 ```
 
 License
