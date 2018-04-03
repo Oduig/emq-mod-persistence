@@ -8,7 +8,7 @@
 
 -export([load/1, on_client_subscribe/4, on_client_unsubscribe/4, unload/0]).
 
--define(TAB, ?MODULE).
+-define(TAB, ?MODULE, ?LOG).
 
 %%--------------------------------------------------------------------
 %% Load/Unload Hook
