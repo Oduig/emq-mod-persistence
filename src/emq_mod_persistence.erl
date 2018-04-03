@@ -18,9 +18,11 @@
 
 -author("Feng Lee <feng@emqtt.io>").
 
--include_lib("emqttd/include/emqttd.hrl").
+-include("../../../include/emqttd.hrl").
 
--include_lib("emqttd/include/emqttd_protocol.hrl").
+-include("../../../include/emqttd_protocol.hrl").
+
+-include("../../../include/emqttd_internal.hrl").
 
 -export([load/1, on_client_subscribe/4, on_client_unsubscribe/4, unload/0]).
 
