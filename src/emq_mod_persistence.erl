@@ -16,8 +16,8 @@
 
 load(Env) ->
     lager:warning("*** PLUGIN **** called load()"),
-    emqttd:hook('client.subscribe', fun ?MODULE:on_client_subscribe/3, [Env]),
-    emqttd:hook('client.unsubscribe', fun ?MODULE:on_client_subscribe/3, [Env]).
+    emqttd:hook('client.subscribe', fun ?MODULE:on_client_subscribe/4, [Env]),
+    emqttd:hook('client.unsubscribe', fun ?MODULE:on_client_subscribe/4, [Env]).
 
 on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
     lager:warning("*** PLUGIN **** called on_client_subscribe()"),
@@ -29,6 +29,6 @@ on_client_unsubscribe(ClientId, Username, TopicTable, _Env) ->
 
 unload() ->
     lager:warning("*** PLUGIN **** called unload()"),
-    emqttd:unhook('client.subscribe', fun ?MODULE:on_client_subscribe/3),
-    emqttd:unhook('client.unsubscribe', fun ?MODULE:on_client_subscribe/3).
+    emqttd:unhook('client.subscribe', fun ?MODULE:on_client_subscribe/4),
+    emqttd:unhook('client.unsubscribe', fun ?MODULE:on_client_subscribe/4).
 
