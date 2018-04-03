@@ -20,7 +20,7 @@ load(Env) ->
     emqttd:hook('client.unsubscribe', fun ?MODULE:on_client_subscribe/4, [Env]).
 
 on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
-    lager:warning("*** PLUGIN **** called on_client_subscribe()"),
+    ?LOG(error, "*** PLUGIN **** called on_client_subscribe()", [], _Env),
     {ok, TopicTable}.
 
 on_client_unsubscribe(ClientId, Username, TopicTable, _Env) ->
