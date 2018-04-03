@@ -30,5 +30,6 @@ Apache License Version 2.0
 Author
 ------
 
-Feng Lee <feng at emqtt.io>
+Guido Josquin
 
+Based on `emq_mod_subscriptions` by Feng Lee.
