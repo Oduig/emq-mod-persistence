@@ -85,11 +85,9 @@ RUN set -ex \
 ### START OF EDITED PART
 RUN set -ex \
     && cd /emqttd \
-    && sed -i '/DEPS = goldrush/a DEPS += emq_mod_persistence' ./Makefile \
-    && sed -i '/dep_goldrush = git https:\/\/github.com\/basho\/goldrush 0.1.9/a dep_emq_mod_persistence = git https:\/\/github.com\/Oduig\/emq-mod-persistence' ./Makefile \
-    && sed -i '/{emq_plugin_template, load}/a ,{emq_mod_persistence, load}' ./relx.config \
-    && ls . -al \
-    && ls ./include -al \
+    && sed -i '/DEPS = goldrush/a DEPS += emq_plugin_template' ./Makefile \
+    && sed -i '/dep_goldrush = git https:\/\/github.com\/basho\/goldrush 0.1.9/a dep_emq_mod_persistence = git https:\/\/github.com\/emqtt\/emq-plugin-template' ./Makefile \
+    && sed -i '/{emq_plugin_template, load}/a ,{emq_plugin_template, load}' ./relx.config \
 ### END OF EDITED PART
     && make \
     && mkdir -p /opt && mv /emqttd/_rel/emqttd /opt/emqttd \
