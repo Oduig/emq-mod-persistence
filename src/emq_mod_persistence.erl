@@ -10,7 +10,7 @@
 
 -define(TAB, ?MODULE).
 
--record(mqtt_persisted, {clientId, topicTable}).
+-record(mqtt_persisted, {clientId, topic}).
 
 %%--------------------------------------------------------------------
 %% Load/Unload Hook
@@ -73,22 +73,19 @@ initMnesia() ->
 
 loadPersistedSubscriptions() ->
   io:format("*** PLUGIN *** loading persisted subscriptions...~n", []),
-%%  TODO
-%%  Query = fun() -> mnesia:select(mqtt_persisted,[{'_',[],['$_']}]) end,
-%%  PersistedSubscriptions = mnesia:activity(transaction, Query),
-  PersistedSubscriptions = [],
+  Query = fun() -> mnesia:select(mqtt_persisted,[{'_',[],['$_']}]) end,
+  PersistedSubscriptions = mnesia:activity(transaction, Query),
   io:format("*** PLUGIN *** done loading ~p persisted subscriptions.~n", [length(PersistedSubscriptions)]),
   PersistedSubscriptions.
 
 persistSubscription(ClientId, Topic) ->
   io:format("*** PLUGIN *** persisting subscription of ~s to topic ~s...~n", [ClientId, Topic]),
-%%  TODO
-%%  mnesia:dirty_write(#mqtt_persisted{clientId = ClientId, topic = Topic})
+  mnesia:dirty_write(#mqtt_persisted{clientId = ClientId, topic = Topic}),
   io:format("*** PLUGIN *** done persisting subscription.~n", []).
 
 forgetSubscription(ClientId, Topic) ->
   io:format("*** PLUGIN *** forgetting subscription of ~s to topic ~s...~n", [ClientId, Topic]),
-%%  mnesia:dirty_delete_object(#mqtt_persisted{clientId = ClientId, topic = Topic}),
+  mnesia:dirty_delete_object(#mqtt_persisted{clientId = ClientId, topic = Topic}),
   io:format("*** PLUGIN *** done forgetting subscription.~n", []).
 
 %% Subscribe a client to a list of topics
