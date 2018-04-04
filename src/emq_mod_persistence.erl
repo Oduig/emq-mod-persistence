@@ -55,41 +55,41 @@ unload() ->
 %%--------------------------------------------------------------------
 
 initMnesia() ->
-  ok.
-%% TODO
-%%  Copies = disc_copies,
-%%  ok = ekka_mnesia:create_table(mqtt_persisted, [
-%%    {type, set},
-%%    {Copies, [node()]},
-%%    {record_name, mqtt_persisted},
-%%    {attributes, record_info(fields, mqtt_persisted)},
-%%    {storage_properties, [{ets, [compressed]},
-%%      {dets, [{auto_save, 1000}]}]}]),
-%%  ok = ekka_mnesia:copy_table(mqtt_persisted),
-%%  case mnesia:table_info(mqtt_persisted, storage_type) of
-%%    Copies -> ok;
-%%    _      -> {atomic, ok} = mnesia:change_table_copy_type(mqtt_persisted, node(), Copies)
-%%  end.
+  Copies = disc_only_copies,
+  %%noinspection ErlangUnresolvedFunction
+  ok = ekka_mnesia:create_table(mqtt_persisted, [
+    {type, set},
+    {Copies, [node()]},
+    {record_name, mqtt_persisted},
+    {attributes, record_info(fields, mqtt_persisted)},
+    {storage_properties, [{ets, [compressed]},
+      {dets, [{auto_save, 1000}]}]}]),
+  %%noinspection ErlangUnresolvedFunction
+  ok = ekka_mnesia:copy_table(mqtt_persisted),
+  case mnesia:table_info(mqtt_persisted, storage_type) of
+    Copies -> ok;
+    _      -> {atomic, ok} = mnesia:change_table_copy_type(mqtt_persisted, node(), Copies)
+  end.
 
 loadPersistedSubscriptions() ->
   io:format("*** PLUGIN *** loading persisted subscriptions...~n", []),
 %%  TODO
-%%  PersistedSubscriptions = mnesia:dirty_read(mqtt_persisted),
+%%  Query = fun() -> mnesia:select(mqtt_persisted,[{'_',[],['$_']}]) end,
+%%  PersistedSubscriptions = mnesia:activity(transaction, Query),
   PersistedSubscriptions = [],
-  io:format("*** PLUGIN *** done loading persisted subscriptions.~n", []),
+  io:format("*** PLUGIN *** done loading ~p persisted subscriptions.~n", [length(PersistedSubscriptions)]),
   PersistedSubscriptions.
 
 persistSubscription(ClientId, Topic) ->
   io:format("*** PLUGIN *** persisting subscription of ~s to topic ~s...~n", [ClientId, Topic]),
 %%  TODO
 %%  mnesia:dirty_write(#mqtt_persisted{clientId = ClientId, topic = Topic})
-  io:format("*** PLUGIN *** done.~n", []).
+  io:format("*** PLUGIN *** done persisting subscription.~n", []).
 
 forgetSubscription(ClientId, Topic) ->
   io:format("*** PLUGIN *** forgetting subscription of ~s to topic ~s...~n", [ClientId, Topic]),
-%%  TODO
-%%  mnesia:dirty_delete(mqtt_persisted, #mqtt_persisted{ClientId, Topic}),
-  io:format("*** PLUGIN *** done.~n", []).
+%%  mnesia:dirty_delete_object(#mqtt_persisted{clientId = ClientId, topic = Topic}),
+  io:format("*** PLUGIN *** done forgetting subscription.~n", []).
 
 %% Subscribe a client to a list of topics
 %% TopicTable is a list of {Topic, Qos}
@@ -98,4 +98,4 @@ subscribeClientToTopics(ClientTopic) ->
   io:format("*** PLUGIN *** subscribing ~s to topic ~s...~n", [ClientId, Topic]),
   %%noinspection ErlangUnresolvedFunction
   emqttd_client:subscribe(ClientId, [{Topic, [{qos, 1}]}]),
-  io:format("*** PLUGIN *** done.~n", []).
+  io:format("*** PLUGIN *** done subscribing.~n", []).
