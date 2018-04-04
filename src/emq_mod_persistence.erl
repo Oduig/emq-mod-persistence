@@ -10,13 +10,15 @@
 
 -define(TAB, ?MODULE).
 
+-record(mqtt_persisted, {clientId, topicTable}).
+
 %%--------------------------------------------------------------------
 %% Load/Unload Hook
 %%--------------------------------------------------------------------
 
 load(Env) ->
-  io:format("*** PLUGIN **** called load()~n", []),
-  initMnesia(Env),
+  io:format("*** PLUGIN *** called load()~n", []),
+  initMnesia(),
   %%noinspection ErlangUnresolvedFunction
   emqttd:hook('client.subscribe', fun ?MODULE:on_client_subscribe/4, [Env]),
   %%noinspection ErlangUnresolvedFunction
@@ -24,18 +26,25 @@ load(Env) ->
   ClientTopicTables = loadPersistedSubscriptions(),
   lists:foreach(fun subscribeClientToTopics/1, ClientTopicTables).
 
-on_client_subscribe(ClientId, Username, TopicTable, Env) ->
-  io:format("*** PLUGIN **** called on_client_subscribe()~n", []),
-  persistSubscription(ClientId, TopicTable),
+on_client_subscribe(ClientId, Username, TopicTable, _) ->
+  io:format("*** PLUGIN *** called on_client_subscribe() for user ~s~n", [Username]),
+  case TopicTable of
+    [{Topic, [{qos, 1}]}] -> persistSubscription(ClientId, Topic);
+    [{Topic, [{qos, 0}]}] -> io:format("*** PLUGIN *** Ignored subscribe on ~s due to QoS 0.~n", [Topic]);
+    _                     -> io:format("*** PLUGIN *** Ignored subscribe on ~p due to unexpected format.~n", [TopicTable])
+  end,
   {ok, TopicTable}.
 
-on_client_unsubscribe(ClientId, Username, TopicTable, Env) ->
-  io:format("*** PLUGIN **** called on_client_unsubscribe()~n", []),
-  forgetSubscription(ClientId, TopicTable),
+on_client_unsubscribe(ClientId, Username, TopicTable, _) ->
+  io:format("*** PLUGIN *** called on_client_unsubscribe() for user ~s~n", [Username]),
+  case TopicTable of
+    [{Topic, _}] -> forgetSubscription(ClientId, Topic);
+    _            -> io:format("*** PLUGIN *** Ignored unsubscribe on ~p due to unexpected format.~n", [TopicTable])
+  end,
   {ok, TopicTable}.
 
 unload() ->
-  io:format("*** PLUGIN **** called unload()~n", []),
+  io:format("*** PLUGIN *** called unload()~n", []),
   %%noinspection ErlangUnresolvedFunction
   emqttd:unhook('client.subscribe', fun ?MODULE:on_client_subscribe/4),
   %%noinspection ErlangUnresolvedFunction
@@ -45,8 +54,9 @@ unload() ->
 %% Helpers
 %%--------------------------------------------------------------------
 
-initMnesia(Env) ->
+initMnesia() ->
   ok.
+%% TODO
 %%  Copies = disc_copies,
 %%  ok = ekka_mnesia:create_table(mqtt_persisted, [
 %%    {type, set},
@@ -64,27 +74,28 @@ initMnesia(Env) ->
 loadPersistedSubscriptions() ->
   io:format("*** PLUGIN *** loading persisted subscriptions...~n", []),
 %%  TODO
+%%  PersistedSubscriptions = mnesia:dirty_read(mqtt_persisted),
   PersistedSubscriptions = [],
   io:format("*** PLUGIN *** done loading persisted subscriptions.~n", []),
   PersistedSubscriptions.
 
-persistSubscription(ClientId, TopicTable) ->
-  io:format("*** PLUGIN *** persisting subscription of ~s to topics ~p...~n", [ClientId, TopicTable]),
+persistSubscription(ClientId, Topic) ->
+  io:format("*** PLUGIN *** persisting subscription of ~s to topic ~s...~n", [ClientId, Topic]),
 %%  TODO
-%%  mnesia:dirty_write(#mqtt_persisted{topic = Topic, msg = Msg, ts = emqttd_time:now_ms(Ts)})
+%%  mnesia:dirty_write(#mqtt_persisted{clientId = ClientId, topic = Topic})
   io:format("*** PLUGIN *** done.~n", []).
 
-forgetSubscription(ClientId, TopicTable) ->
-  io:format("*** PLUGIN *** forgetting subscription of ~s to topics ~p...~n", [ClientId, TopicTable]),
+forgetSubscription(ClientId, Topic) ->
+  io:format("*** PLUGIN *** forgetting subscription of ~s to topic ~s...~n", [ClientId, Topic]),
 %%  TODO
-%%  mnesia:dirty_delete(mqtt_persisted, {ClientId, TopicTable}),
+%%  mnesia:dirty_delete(mqtt_persisted, #mqtt_persisted{ClientId, Topic}),
   io:format("*** PLUGIN *** done.~n", []).
 
 %% Subscribe a client to a list of topics
 %% TopicTable is a list of {Topic, Qos}
-subscribeClientToTopics(ClientTopicTable) ->
-  {ClientId, TopicTable} = ClientTopicTable,
-  io:format("*** PLUGIN *** subscribing ~s to topics ~p...~n", [ClientId, TopicTable]),
-%%  TODO
-%%  emqttd_client:subscribe(ClientId, TopicTable),
+subscribeClientToTopics(ClientTopic) ->
+  {ClientId, Topic} = ClientTopic,
+  io:format("*** PLUGIN *** subscribing ~s to topic ~s...~n", [ClientId, Topic]),
+  %%noinspection ErlangUnresolvedFunction
+  emqttd_client:subscribe(ClientId, [{Topic, [{qos, 1}]}]),
   io:format("*** PLUGIN *** done.~n", []).
