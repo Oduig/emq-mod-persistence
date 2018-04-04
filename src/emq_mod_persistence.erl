@@ -17,10 +17,12 @@
 load(Env) ->
   io:format("*** PLUGIN **** called load()~n", []),
   initMnesia(Env),
+  %%noinspection ErlangUnresolvedFunction
   emqttd:hook('client.subscribe', fun ?MODULE:on_client_subscribe/4, [Env]),
+  %%noinspection ErlangUnresolvedFunction
   emqttd:hook('client.unsubscribe', fun ?MODULE:on_client_unsubscribe/4, [Env]),
   ClientTopicTables = loadPersistedSubscriptions(),
-  lists:foreach(subscribeClientToTopics, ClientTopicTables).
+  lists:foreach(fun subscribeClientToTopics/1, ClientTopicTables).
 
 on_client_subscribe(ClientId, Username, TopicTable, Env) ->
   io:format("*** PLUGIN **** called on_client_subscribe()~n", []),
@@ -34,7 +36,9 @@ on_client_unsubscribe(ClientId, Username, TopicTable, Env) ->
 
 unload() ->
   io:format("*** PLUGIN **** called unload()~n", []),
+  %%noinspection ErlangUnresolvedFunction
   emqttd:unhook('client.subscribe', fun ?MODULE:on_client_subscribe/4),
+  %%noinspection ErlangUnresolvedFunction
   emqttd:unhook('client.unsubscribe', fun ?MODULE:on_client_unsubscribe/4).
 
 %%--------------------------------------------------------------------
@@ -78,8 +82,8 @@ forgetSubscription(ClientId, TopicTable) ->
 
 %% Subscribe a client to a list of topics
 %% TopicTable is a list of {Topic, Qos}
-subscribeClientToTopics(clientTopicTable) ->
-  {ClientId, TopicTable} = clientTopicTable,
+subscribeClientToTopics(ClientTopicTable) ->
+  {ClientId, TopicTable} = ClientTopicTable,
   io:format("*** PLUGIN *** subscribing ~s to topics ~p...~n", [ClientId, TopicTable]),
 %%  TODO
 %%  emqttd_client:subscribe(ClientId, TopicTable),
