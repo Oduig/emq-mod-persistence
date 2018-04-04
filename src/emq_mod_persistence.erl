@@ -23,8 +23,8 @@ load(Env) ->
   emqttd:hook('client.subscribe', fun ?MODULE:on_client_subscribe/4, [Env]),
   %%noinspection ErlangUnresolvedFunction
   emqttd:hook('client.unsubscribe', fun ?MODULE:on_client_unsubscribe/4, [Env]),
-  ClientTopicTables = loadPersistedSubscriptions(),
-  lists:foreach(fun subscribeClientToTopics/1, ClientTopicTables).
+  ClientTopics = loadPersistedSubscriptions(),
+  lists:foreach(fun subscribeClientToTopic/1, ClientTopics).
 
 on_client_subscribe(ClientId, Username, TopicTable, _) ->
   io:format("*** PLUGIN *** called on_client_subscribe() for user ~s~n", [Username]),
@@ -90,8 +90,8 @@ forgetSubscription(ClientId, Topic) ->
 
 %% Subscribe a client to a list of topics
 %% TopicTable is a list of {Topic, Qos}
-subscribeClientToTopics(ClientTopic) ->
-  {ClientId, Topic} = ClientTopic,
+subscribeClientToTopic(ClientTopic) ->
+  {mqtt_persisted, ClientId, Topic} = ClientTopic,
   io:format("*** PLUGIN *** subscribing ~s to topic ~s...~n", [ClientId, Topic]),
   %%noinspection ErlangUnresolvedFunction
   emqttd_client:subscribe(ClientId, [{Topic, [{qos, 1}]}]),
