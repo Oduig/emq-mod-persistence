@@ -1,13 +1,19 @@
 -module(emq_mod_persistence).
 
 -include_lib("emqttd/include/emqttd.hrl").
-
 -include_lib("emqttd/include/emqttd_protocol.hrl").
-
 -include_lib("emqttd/include/emqttd_internal.hrl").
 
 % on_message_publish/3,
--export([load/1, on_client_subscribe/4, on_client_unsubscribe/4, on_session_subscribed/4, unload/0]).
+-export([
+  load/1,
+  on_client_connected/3,
+  on_client_subscribe/4,
+  on_client_unsubscribe/4,
+  on_session_subscribed/4,
+  on_message_publish/2,
+  unload/0
+]).
 
 -define(TAB, ?MODULE).
 
@@ -15,25 +21,30 @@
 -record(mqtt_persisted_message, {clientId, message}).
 
 %%--------------------------------------------------------------------
-%% Load/Unload Hook
+%% Hooks
 %%--------------------------------------------------------------------
 
+%%noinspection ErlangUnresolvedFunction
 load(Env) ->
   io:format("*** PLUGIN *** called load()~n", []),
   initMnesia(),
-  PersistedSubscriptions = loadPersistedSubscriptions(),
-  %%noinspection ErlangUnresolvedFunction
+%%  PersistedSubscriptions = loadPersistedSubscriptions(),
+  emqttd:hook('client.connected', fun ?MODULE:on_client_connected/3, [Env]),
   emqttd:hook('client.subscribe', fun ?MODULE:on_client_subscribe/4, [Env]),
-  %%noinspection ErlangUnresolvedFunction
   emqttd:hook('client.unsubscribe', fun ?MODULE:on_client_unsubscribe/4, [Env]),
-  %%noinspection ErlangUnresolvedFunction
-  emqttd:hook('session.subscribed', fun ?MODULE:on_session_subscribed/4, [Env]).
-  %%noinspection ErlangUnresolvedFunction
-  %%emqttd:hook('message.publish', fun ?MODULE:on_message_publish/3, [PersistedSubscriptions, Env]).
+  emqttd:hook('session.subscribed', fun ?MODULE:on_session_subscribed/4, [Env]),
+  emqttd:hook('message.publish', fun ?MODULE:on_message_publish/2, [Env]).
+%%  emqttd:hook('message.publish', fun ?MODULE:on_message_publish/3, [PersistedSubscriptions, Env]).
+
+%%noinspection ErlangUnresolvedRecord
+on_client_connected(_ConnAck, Client = #mqtt_client{client_id = ClientId}, _) ->
+  io:format("*** PLUGIN *** client ~s connected, client: ~p~n", [ClientId, Client]),
+  {ok, Client}.
 
 on_client_subscribe(ClientId, Username, TopicTable, _) ->
   io:format("*** PLUGIN *** called on_client_subscribe() for user ~s~n", [Username]),
   case TopicTable of
+    [{Topic, [{qos, 2}]}] -> persistSubscription(ClientId, Topic);
     [{Topic, [{qos, 1}]}] -> persistSubscription(ClientId, Topic);
     [{Topic, [{qos, 0}]}] -> io:format("*** PLUGIN *** Ignored subscribe on ~s due to QoS 0.~n", [Topic]);
     _ -> io:format("*** PLUGIN *** Ignored subscribe on ~p due to unexpected format.~n", [TopicTable])
@@ -50,11 +61,24 @@ on_client_unsubscribe(ClientId, Username, TopicTable, _) ->
 
 on_session_subscribed(ClientId, Username, {Topic, _Opts}, _) ->
   io:format("*** PLUGIN *** called on_session_subscribed() for user ~s~n", [Username]),
-  io:format("*** PLUGIN *** Session subscribed with options: ~p~n", [_Opts]),
   SessionPid = self(),
   Messages = recoverTopicMessages(ClientId, Topic),
-  lists:foreach(fun(Msg) -> SessionPid ! {dispatch, Topic, Msg} end, sortPersisted(Messages)),
+  case _Opts of
+    [{qos, 0}] -> io:format("*** PLUGIN *** subscribed session has QoS 0, persisted messages were discarded.~n", []);
+    [{qos, 1}] -> lists:foreach(fun(Msg) -> SessionPid ! {dispatch, Topic, Msg} end, sortPersisted(Messages));
+    [{qos, 2}] -> lists:foreach(fun(Msg) -> SessionPid ! {dispatch, Topic, Msg} end, sortPersisted(Messages));
+    _          -> io:format("*** PLUGIN *** subscribbed session had an unexpected format for _Opts.~n", [])
+  end,
   ok.
+
+%%noinspection ErlangUnresolvedRecord
+on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _) ->
+  {ok, Message};
+
+on_message_publish(Message, _) ->
+  %%noinspection ErlangUnresolvedFunction
+  io:format("*** PLUGIN *** publish with unknown format ~s~n", [emqttd_message:format(Message)]),
+  {ok, Message}.
 
 %%on_message_publish(Msg, PersistedSubscriptions, _) ->
 %%  case Msg of
@@ -65,22 +89,28 @@ on_session_subscribed(ClientId, Username, {Topic, _Opts}, _) ->
 %%  end,
 %%  {ok, Msg}.
 
+%%noinspection ErlangUnresolvedFunction
 unload() ->
   io:format("*** PLUGIN *** called unload()~n", []),
-  %%noinspection ErlangUnresolvedFunction
+  emqttd:unhook('client.connected', fun ?MODULE:on_client_connected/3),
   emqttd:unhook('client.subscribe', fun ?MODULE:on_client_subscribe/4),
-  %%noinspection ErlangUnresolvedFunction
-  emqttd:unhook('client.unsubscribe', fun ?MODULE:on_client_unsubscribe/4).
+  emqttd:unhook('client.unsubscribe', fun ?MODULE:on_client_unsubscribe/4),
+  emqttd:unhook('session.subscribed', fun ?MODULE:on_session_subscribed/4),
+  emqttd:unhook('message.publish', fun ?MODULE:on_message_publish/2).
 
 %%--------------------------------------------------------------------
 %% Helpers
 %%--------------------------------------------------------------------
 
 initMnesia() ->
+  %% Only persist to disk
   Copies = disc_only_copies,
+  %% Unlike table type 'set', 'bag' allows multiple records with the same key.
+  %% The key is always the first property of a record.
+  %% Mnesia automatically drops duplicate records, even for type 'bag'.
   %%noinspection ErlangUnresolvedFunction
   ok = ekka_mnesia:create_table(mqtt_persisted_subscription, [
-    {type, set},
+    {type, bag},
     {Copies, [node()]},
     {record_name, mqtt_persisted_subscription},
     {attributes, record_info(fields, mqtt_persisted_subscription)},
@@ -89,7 +119,7 @@ initMnesia() ->
   copyMnesiaTable(mqtt_persisted_subscription, Copies),
   %%noinspection ErlangUnresolvedFunction
   ok = ekka_mnesia:create_table(mqtt_persisted_message, [
-    {type, set},
+    {type, bag},
     {Copies, [node()]},
     {record_name, mqtt_persisted_message},
     {attributes, record_info(fields, mqtt_persisted_message)},
@@ -130,6 +160,7 @@ recoverTopicMessages(ClientId, Topic) ->
   io:format("*** PLUGIN *** recovering messages for client ~s on topic ~s...~n", [ClientId, Topic]),
   Query = fun() -> mnesia:select(mqtt_persisted_message, [{#mqtt_persisted_message{clientId=ClientId, _='_'}, [], ['$_']}]) end,
   PersistedMessages = mnesia:activity(transaction, Query),
+  %%noinspection ErlangUnresolvedRecord
   TopicMatcher = fun (#mqtt_persisted_message{message = #mqtt_message{topic = MsgTopic}}) -> MsgTopic =:= Topic end,
   RecoveredMessages = lists:filter(TopicMatcher, PersistedMessages),
   DeleteQuery = fun() -> lists:foreach(fun(Msg) -> mnesia:delete_object(Msg) end, RecoveredMessages) end,
@@ -142,4 +173,5 @@ sortPersisted([]) ->
 sortPersisted([Msg]) ->
   [Msg];
 sortPersisted(Msgs) ->
+  %%noinspection ErlangUnresolvedRecord
   lists:sort(fun(#mqtt_message{timestamp = Ts1}, #mqtt_message{timestamp = Ts2}) -> Ts1 =< Ts2 end, Msgs).

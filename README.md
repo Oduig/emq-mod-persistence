@@ -39,8 +39,7 @@ This EMQTT plugin is a work in progress. The following still need to be done.
 4. Only persist messages if the subscription is disconnected. (How to do this, can we keep track of the client PID?)
 5. Dump persisted messages if a subscription reconnects.
 6. Handle wildcard topics.
-7. Handle QoS level 2.
-8. Finalize solution, introduce time/storage limit for persisted messages similar to `emq-retainer`.
+7. Finalize solution, introduce time/storage limit for persisted messages similar to `emq-retainer`.
 
 Configure Persistence Module
 -----------------------------
