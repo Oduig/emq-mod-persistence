@@ -6,7 +6,7 @@
 
 -include_lib("emqttd/include/emqttd_internal.hrl").
 
--export([load/1, on_client_subscribe/4, on_client_unsubscribe/4, on_session_subscribed/4, on_message_publish/3, unload/0]).
+-export([load/1, on_client_subscribe/4, on_client_unsubscribe/4, on_session_subscribed/4, on_message_publish/2, unload/0]).
 
 -define(TAB, ?MODULE).
 
@@ -28,7 +28,7 @@ load(Env) ->
   %%noinspection ErlangUnresolvedFunction
   emqttd:hook('session.subscribed', fun ?MODULE:on_session_subscribed/4, [Env]),
   %%noinspection ErlangUnresolvedFunction
-  emqttd:hook('message.publish', fun ?MODULE:on_message_publish/3, [PersistedSubscriptions, Env]).
+  emqttd:hook('message.publish', fun ?MODULE:on_message_publish/2, [PersistedSubscriptions]).
 
 on_client_subscribe(ClientId, Username, TopicTable, _) ->
   io:format("*** PLUGIN *** called on_client_subscribe() for user ~s~n", [Username]),
@@ -55,7 +55,7 @@ on_session_subscribed(ClientId, Username, {Topic, _Opts}, _) ->
   lists:foreach(fun(Msg) -> SessionPid ! {dispatch, Topic, Msg} end, sortPersisted(Messages)),
   ok.
 
-on_message_publish(Msg, PersistedSubscriptions, _) ->
+on_message_publish(Msg, PersistedSubscriptions) ->
   case Msg of
     #mqtt_message{topic = Topic, qos = 1} ->
       MatchingSubscriptions = lists:filter(fun({_, PersistedTopic}) -> PersistedTopic =:= Topic end, PersistedSubscriptions),
