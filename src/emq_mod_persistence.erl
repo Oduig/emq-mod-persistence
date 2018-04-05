@@ -58,35 +58,27 @@ on_client_unsubscribe(ClientId, Username, TopicTable, _) ->
   end,
   {ok, TopicTable}.
 
-on_session_subscribed(ClientId, Username, {Topic, _Opts}, _) ->
+on_session_subscribed(ClientId, Username, {Topic, Opts}, _) ->
   io:format("*** PLUGIN *** called on_session_subscribed() for user ~s~n", [Username]),
   SessionPid = self(),
   Messages = recoverTopicMessages(ClientId, Topic),
-  case _Opts of
+  case Opts of
     [{qos, 0}] -> io:format("*** PLUGIN *** subscribed session has QoS 0, persisted messages were discarded.~n", []);
     [{qos, 1}] -> lists:foreach(fun(Msg) -> SessionPid ! {dispatch, Topic, Msg} end, sortPersisted(Messages));
     [{qos, 2}] -> lists:foreach(fun(Msg) -> SessionPid ! {dispatch, Topic, Msg} end, sortPersisted(Messages));
-    _          -> io:format("*** PLUGIN *** subscribbed session had an unexpected format for _Opts.~n", [])
+    _          -> io:format("*** PLUGIN *** subscribed session had an unexpected format for _Opts.~n", [])
   end,
   ok.
 
-%%noinspection ErlangUnresolvedRecord
-on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, PersistedSubscriptions, _) ->
-  {ok, Message};
-
 on_message_publish(Message, PersistedSubscriptions, _) ->
-  %%noinspection ErlangUnresolvedFunction
-  io:format("*** PLUGIN *** publish with unknown format ~s~n", [emqttd_message:format(Message)]),
+  %%noinspection ErlangUnresolvedRecord
+  case Message of
+    #mqtt_message{topic = Topic, qos = 1} ->
+      MatchingSubscriptions = lists:filter(fun({_, PersistedTopic}) -> PersistedTopic =:= Topic end, PersistedSubscriptions),
+      lists:foreach(fun({ClientId, _}) -> persistMessage(ClientId, Message) end, MatchingSubscriptions);
+    _ -> ok
+  end,
   {ok, Message}.
-
-%%on_message_publish(Msg, PersistedSubscriptions, _) ->
-%%  case Msg of
-%%    #mqtt_message{topic = Topic, qos = 1} ->
-%%      MatchingSubscriptions = lists:filter(fun({_, PersistedTopic}) -> PersistedTopic =:= Topic end, PersistedSubscriptions),
-%%      lists:foreach(fun({ClientId, _}) -> persistMessage(ClientId, Msg) end, MatchingSubscriptions);
-%%    _ -> ok
-%%  end,
-%%  {ok, Msg}.
 
 %%noinspection ErlangUnresolvedFunction
 unload() ->
