@@ -70,12 +70,17 @@ on_session_subscribed(ClientId, Username, {Topic, Opts}, _) ->
   end,
   ok.
 
+%%noinspection ErlangUnresolvedRecord
+on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _, _) ->
+  {ok, Message};
+
 on_message_publish(Message, PersistedSubscriptions, _) ->
   %%noinspection ErlangUnresolvedRecord
   case Message of
     #mqtt_message{topic = Topic, qos = 1} ->
       MatchingSubscriptions = lists:filter(fun({_, PersistedTopic}) -> PersistedTopic =:= Topic end, PersistedSubscriptions),
-      lists:foreach(fun({ClientId, _}) -> persistMessage(ClientId, Message) end, MatchingSubscriptions);
+      lists:foreach(fun({ClientId, _}) -> persistMessage(ClientId, Message) end, MatchingSubscriptions),
+      io:format("*** PLUGIN *** message persisted for ~p subscriptions.~n", [length(MatchingSubscriptions)]);
     _ -> ok
   end,
   {ok, Message}.
