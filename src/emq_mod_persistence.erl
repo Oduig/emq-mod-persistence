@@ -11,7 +11,7 @@
   on_client_subscribe/4,
   on_client_unsubscribe/4,
   on_session_subscribed/4,
-  on_message_publish/2,
+  on_message_publish/3,
   unload/0
 ]).
 
@@ -28,17 +28,16 @@
 load(Env) ->
   io:format("*** PLUGIN *** called load()~n", []),
   initMnesia(),
-%%  PersistedSubscriptions = loadPersistedSubscriptions(),
+  PersistedSubscriptions = loadPersistedSubscriptions(),
   emqttd:hook('client.connected', fun ?MODULE:on_client_connected/3, [Env]),
   emqttd:hook('client.subscribe', fun ?MODULE:on_client_subscribe/4, [Env]),
   emqttd:hook('client.unsubscribe', fun ?MODULE:on_client_unsubscribe/4, [Env]),
   emqttd:hook('session.subscribed', fun ?MODULE:on_session_subscribed/4, [Env]),
-  emqttd:hook('message.publish', fun ?MODULE:on_message_publish/2, [Env]).
-%%  emqttd:hook('message.publish', fun ?MODULE:on_message_publish/3, [PersistedSubscriptions, Env]).
+  emqttd:hook('message.publish', fun ?MODULE:on_message_publish/3, [PersistedSubscriptions, Env]).
 
 %%noinspection ErlangUnresolvedRecord
-on_client_connected(_ConnAck, Client = #mqtt_client{client_id = ClientId}, _) ->
-  io:format("*** PLUGIN *** client ~s connected, client: ~p~n", [ClientId, Client]),
+on_client_connected(_ConnAck, Client = #mqtt_client{client_id = ClientId, clean_sess = CleanSession}, _) ->
+  io:format("*** PLUGIN *** client ~s connected, client with clean=~p~n", [ClientId, CleanSession]),
   {ok, Client}.
 
 on_client_subscribe(ClientId, Username, TopicTable, _) ->
@@ -72,10 +71,10 @@ on_session_subscribed(ClientId, Username, {Topic, _Opts}, _) ->
   ok.
 
 %%noinspection ErlangUnresolvedRecord
-on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _) ->
+on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, PersistedSubscriptions, _) ->
   {ok, Message};
 
-on_message_publish(Message, _) ->
+on_message_publish(Message, PersistedSubscriptions, _) ->
   %%noinspection ErlangUnresolvedFunction
   io:format("*** PLUGIN *** publish with unknown format ~s~n", [emqttd_message:format(Message)]),
   {ok, Message}.
