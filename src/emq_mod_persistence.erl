@@ -70,15 +70,15 @@ on_session_subscribed(ClientId, Username, {Topic, Opts}, _) ->
   end,
   ok.
 
-on_message_publish(Message, PersistedSubscriptions, _) ->
-  %%noinspection ErlangUnresolvedRecord
-  #mqtt_message{topic = Topic, qos = QoS} = Message,
+%%noinspection ErlangUnresolvedRecord
+on_message_publish(Message = #mqtt_message{topic = Topic, qos = QoS}, PersistedSubscriptions, _) ->
   case QoS of
     Value when Value > 0 ->
-      MatchingSubscriptions = lists:filter(fun({_, PersistedTopic}) -> PersistedTopic =:= Topic end, PersistedSubscriptions),
-      lists:foreach(fun({ClientId, _}) -> persistMessage(ClientId, Message) end, MatchingSubscriptions),
+      TopicMatcher = fun(#mqtt_persisted_subscription{topic = PersistedTopic}) -> PersistedTopic =:= Topic end,
+      MatchingSubscriptions = lists:filter(TopicMatcher, PersistedSubscriptions),
+      lists:foreach(fun(#mqtt_persisted_subscription{clientId = ClientId}) -> persistMessage(ClientId, Message) end, MatchingSubscriptions),
       io:format("*** PLUGIN *** message persisted for ~p subscriptions.~n", [length(MatchingSubscriptions)]);
-    _ -> io:format("*** PLUGIN *** message not persisted due to QoS ~p.~n", [QoS])
+    _ -> ok
   end,
   {ok, Message}.
 
@@ -155,9 +155,10 @@ recoverTopicMessages(ClientId, Topic) ->
   PersistedMessages = mnesia:activity(transaction, Query),
   %%noinspection ErlangUnresolvedRecord
   TopicMatcher = fun (#mqtt_persisted_message{message = #mqtt_message{topic = MsgTopic}}) -> MsgTopic =:= Topic end,
-  RecoveredMessages = lists:filter(TopicMatcher, PersistedMessages),
-  DeleteQuery = fun() -> lists:foreach(fun(Msg) -> mnesia:delete_object(Msg) end, RecoveredMessages) end,
+  MatchingPersistedMessages = lists:filter(TopicMatcher, PersistedMessages),
+  DeleteQuery = fun() -> lists:foreach(fun(Msg) -> mnesia:delete_object(Msg) end, MatchingPersistedMessages) end,
   mnesia:transaction(DeleteQuery),
+  RecoveredMessages = lists:map(fun (#mqtt_persisted_message{message = Msg}) -> Msg end, MatchingPersistedMessages),
   io:format("*** PLUGIN *** done recovering ~p messages.~n", [length(RecoveredMessages)]),
   RecoveredMessages.
 
