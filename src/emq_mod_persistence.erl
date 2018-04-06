@@ -74,7 +74,7 @@ on_message_publish(Message, PersistedSubscriptions, _) ->
   %%noinspection ErlangUnresolvedRecord
   #mqtt_message{topic = Topic, qos = QoS} = Message,
   case QoS of
-    i when i > 0 ->
+    Value when Value > 0 ->
       MatchingSubscriptions = lists:filter(fun({_, PersistedTopic}) -> PersistedTopic =:= Topic end, PersistedSubscriptions),
       lists:foreach(fun({ClientId, _}) -> persistMessage(ClientId, Message) end, MatchingSubscriptions),
       io:format("*** PLUGIN *** message persisted for ~p subscriptions.~n", [length(MatchingSubscriptions)]);
