@@ -78,7 +78,7 @@ on_message_publish(Message, PersistedSubscriptions, _) ->
       MatchingSubscriptions = lists:filter(fun({_, PersistedTopic}) -> PersistedTopic =:= Topic end, PersistedSubscriptions),
       lists:foreach(fun({ClientId, _}) -> persistMessage(ClientId, Message) end, MatchingSubscriptions),
       io:format("*** PLUGIN *** message persisted for ~p subscriptions.~n", [length(MatchingSubscriptions)]);
-    _ -> ok
+    _ -> io:format("*** PLUGIN *** message not persisted due to QoS ~p.~n", [QoS])
   end,
   {ok, Message}.
 
